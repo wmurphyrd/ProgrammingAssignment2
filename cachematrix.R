@@ -9,6 +9,10 @@
 
 makeCacheMatrix <- function(x = matrix()) {
     solution <- NULL;
+    # need to keep track of optional arguments used in the solve calculation
+    # otherwise calling cacheSolve a second time after changing the 
+    # arguments but not the matrix will return an incorrect chached result
+    argsList <- list(); 
     set <- function(y) {
         x<<-y;
         solution<<-NULL; # reset the solution when the matrix is modified
@@ -17,21 +21,39 @@ makeCacheMatrix <- function(x = matrix()) {
     # can reset the solution when it is changed, use the
     # get function to view the value of x
     get <- function() x; 
-    setSolution <- function(sol) {solution <<- sol;}
-    getSolution <- function() solution; 
+    setSolution <- function(sol,...) {
+        solution <<- sol; 
+        # save any extra parameters that were sent to solve() 
+        argsList<<-list(...);
+    }
+    getSolution <- function(...) {
+        # force cacheSolve to recalculate the solution if
+        # the ... arguments are different from when it was calculated
+        if(!identical(list(...),argsList)) return(NULL);
+        #otherwise just return the cached solution
+        solution;
+    } 
     list(set=set,get=get,setSolution=setSolution,getSolution=getSolution)
     
 }
 
 
 ## Returns the inverse of the matrix, using the last calculated result
-## if the matrix has not been changed. Always use this function rather than 
-## getSolution from the cacheMatrix list object to ensure a valid
-## solution is returned even when the solution hasn't been calculated 
+## if the matrix has not been changed and the solve parameters are the same.
+## Always use this function rather than getSolution from the cacheMatrix 
+## list object to ensure a valid solution is returned even when the 
+## solution hasn't been calculated 
 
 cacheSolve <- function(x, ...) {
-    #if the solution is not already cached, calculate it and cache it    
-    if(is.null(x$getSolution())) x$setSolution(solve(x$get()));
-    #now the solution is either already available or just calculated
-    x$getSolution();
+    #if the appropriate solution is not already cached,
+    # calculate the inverse and cache it    
+    if(is.null(x$getSolution(...))){
+        # in addition to providing them to the solve function,
+        # the ... args are also passed to setSolution so that the
+        # cache matrix can track if they have changed
+        x$setSolution(solve(x$get(),...),...);
+        print("Recalculating solution.");
+    }
+    #now the solution is either already available or was just updated
+    x$getSolution(...);
 }
